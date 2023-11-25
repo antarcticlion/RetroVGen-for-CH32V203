@@ -1,0 +1,26 @@
+
+    RetroVGen for CH32V203K8T6/CH32V20CK8T6
+
+    2023-11-25 copyright (c) antarcticlion 
+
+    https://github.com/antarcticlion/RetroVGen-for-CH32V203/
+
+	Origin with
+		GORRY - RetroVGen
+		Nick Gammon - VGA video generation
+
+
+
+ライセンス / LICENSE
+
+
+
+このプロジェクトはフルスクラッチで書かれたファイルとGORRY氏作のRetroVGenのファイルを改変したものが混在しています。
+プロダクト全体のライセンスを RetroVGen および派生元のNick Gammon氏による「VGA video generation」と揃えます。
+
+ 本プロダクトは、自由かつ無償で使用・コピー・配布・変更・流用を行うことが
+ できます。また許可なく再配布・出版・販売を行うことができます。
+
+ 本プロダクトは、無保証です。使用した、あるいはしなかったことによる一切の
+ 責任は使用者にあるものとします。
+

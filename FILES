@@ -1,0 +1,29 @@
+
+    RetroVGen for CH32V203K8T6/CH32V20CK8T6
+
+    2023-11-25 copyright (c) antarcticlion 
+
+    https://github.com/antarcticlion/RetroVGen-for-CH32V203/
+
+	Origin with
+		GORRY - RetroVGen
+		Nick Gammon - VGA video generation
+
+
+
+FILES
+
+
+
+CH32V203_VGA.ino スケッチ本体
+CH32V203_VGA.h   オリジナルフォント
+screenFont.h     GORRY氏RetroVGenのフォントを1文字変更
+videoparam.h     GORRY氏RetroVGenのビデオパラメタを元にCH32V203用に変更
+original.h       派生元のNick Gammon氏のオリジナル表記
+LICENSE          ライセンスファイル
+FILES            ファイル一覧
+CHANGES          変更一覧
+readme.md	 解説
+
+
+

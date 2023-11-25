@@ -1,0 +1,48 @@
+
+    RetroVGen for CH32V203K8T6/CH32V20CK8T6
+
+    2023-11-25 copyright (c) antarcticlion 
+
+    https://github.com/antarcticlion/RetroVGen-for-CH32V203/
+
+	Origin with
+		GORRY - RetroVGen
+		Nick Gammon - VGA video generation
+
+
+
+CHANGES
+
+
+
+R.01 2023-11-25 ファーストリリース
+        ・一部のスクリーンモードが2つ動作しませんが、それ以外は概ね良好。
+
+        ・オリジナルの仕様を踏襲しつつ、Line doubler設定にx4(quad)モードを追加。
+
+        ・pinout
+            PA7 : VIDEO out
+            PA15: VSYNC LED
+            PB0 : HSYNC
+            PB1 : VSYNC
+            PB3 : SW1
+            PB4 : SW2
+            PB5 : SW3
+            PB6 : SW4
+
+        ・スクリーンモードを変更
+            mode 8 SVGA 800x600 60Hz
+            mode A XGA 1024x768 60Hz 
+            mode B SXGA 1280x1024 60Hz  
+            mode C MZ-3500 640x400 21KHz
+            mode D MZ-3500 640x200 15KHz 
+
+        ・作業中のモード、および設定が不確定なモード
+            mode 1 NTSC 作業中につき動作不可
+            mode 5 X1turbo 24KHz 設定値の出典が見つからず要調査
+            mode 9 PAL 作業中につき動作不可
+
+
+
+
+
