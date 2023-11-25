@@ -55,6 +55,40 @@ note:
   に書き換えてください。  
   
 ----  
+オリジナルは5V、CH32V203は3.3Vですが、外部回路はオリジナルと同じで大丈夫です。
+
+ピンアウト
+            PA7 : VIDEO out  
+            PA15: VSYNC LED  
+            PB0 : HSYNC  
+            PB1 : VSYNC  
+            PB3 : SW1  
+            PB4 : SW2  
+            PB5 : SW3  
+            PB6 : SW4  
+
+----
+
+スクリーンモード  
+          mode 0 VGA 31KHz 60Hz  
+          mode 1 NTSC 作業中につき動作不可  
+          mode 2 X1 15KHz  
+          mode 3 X68000 15KHz  
+          mode 4 PC9801 15KHz  
+          mode 5 X1turbo 24kHz 設定値の出典が見つからず要調査  
+          mode 6 PC-9801 24kHz  
+          mode 7 X68000 31kHz  
+          mode 8 SVGA 800x600 60Hz  
+          mode 9 PAL 作業中につき動作不可  
+          mode A XGA 1024x768 60Hz   
+          mode B SXGA 1280x1024 60Hz    
+          mode C MZ-3500 640x400 21KHz  
+          mode D MZ-3500 640x200 15KHz   
+          mode E PC-9801 24kHz  
+          mode F X68000 31kHz  
+	
+----  
+
   
 ライセンス / LICENSE  
   
