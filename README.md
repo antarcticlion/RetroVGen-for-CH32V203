@@ -10,6 +10,9 @@ Retro RGB Video Signal Generator for CH32V203K8T6/CH32V20CK8T6
 		Nick Gammon - VGA video generation  
   
 ----  
+<img src="images/disp.jpg" alt="動作時の画面表示例" title="動作時の画面表示例" width="512" height="288">
+<img src="images/test_board.jpg" alt="テストボード" title="テストボード" width="512" height="288">
+----  
   
 GORRYさんのRetroVGenをCH32V203に移植したものです。  
 ビルドにはarduino ideにWCHのボードをインストールしたものが必要です。  
