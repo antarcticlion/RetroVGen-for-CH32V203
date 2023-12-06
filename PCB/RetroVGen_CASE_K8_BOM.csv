@@ -1,0 +1,22 @@
+参照記号,パッケージ,数,名称,商品名,URL,通販コード,単価,入数,必要数
+"J13,J18,J8,J3",PinHeader_1x16_P2.54mm_Vertical,4,Conn_01x16,ピンヘッダ　１×４０　（４０Ｐ）,https://akizukidenshi.com/catalog/g/gC-00167/,C-00167,35,1,2
+SW2,DIP-8_W7.62mm,1,MODE,ピアノＤＩＰスイッチ　４Ｐ ,https://akizukidenshi.com/catalog/g/gP-15243/,P-15243 ,70,1,1
+Y1,Crystal_HC49-U_Vertical,1,8MHz,クリスタル（水晶発振子）　８ＭＨｚ,https://akizukidenshi.com/catalog/g/gP-08667/,P-08667 ,30,1,1
+U2,TO-220-3_Vertical,1,NJU7223F33,低損失ＣＭＯＳ三端子レギュレーター　３．３Ｖ５００ｍＡ　ＮＪＵ７２２３Ｆ３３ ,https://akizukidenshi.com/catalog/g/gI-00432/,I-00432 ,50,1,1
+U1,LQFP-32_7x7mm_P0.8mm,1,CH32V203K8T6,３２ビットＲＩＳＣ－Ｖマイコン　ＣＨ３２Ｖ２０３Ｋ８Ｔ６ ,https://akizukidenshi.com/catalog/g/gI-18063/,I-18063 ,120,1,1
+"R10,R9",R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,2,22R,カーボン抵抗（炭素皮膜抵抗）　１／４Ｗ２２Ω　（１００本入） ,https://akizukidenshi.com/catalog/g/gR-03821/,R-03821 ,100,100,2
+"R7,R6",R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,2,68R,カーボン抵抗（炭素皮膜抵抗）　１／４Ｗ６８Ω　（１００本入） ,https://akizukidenshi.com/catalog/g/gR-14290/,R-14290 ,100,100,2
+R4,R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1,10KR,カーボン抵抗（炭素皮膜抵抗）　１／４Ｗ１０ｋΩ　（１００本入） ,https://akizukidenshi.com/catalog/g/gR-25103/,R-25103 ,100,100,1
+"R3,R2",R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,2,1KR,カーボン抵抗（炭素皮膜抵抗）　１／４Ｗ１ｋΩ　（１００本入）,https://akizukidenshi.com/catalog/g/gR-25102/,R-25102,100,100,2
+R1,R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal,1,150R,カーボン抵抗（炭素皮膜抵抗）　１／４Ｗ１５０Ω　（１００本入） ,https://akizukidenshi.com/catalog/g/gR-25151/,R-25151,140,100,1
+"D5,D4,D3",D_DO-34_SOD68_P7.62mm_Horizontal,3,1S4,整流用ショットキーダイオード　４０Ｖ１Ａ　１Ｓ４　（１０本入）,https://akizukidenshi.com/catalog/g/gI-16384/,I-16384,140,10,3
+D2,LED_D3.0mm,1,POWER,３ｍｍ赤色ＬＥＤ　６２５ｎｍ　７０度　ＯＳＲ５ＪＡ３Ｚ７４Ａ,https://akizukidenshi.com/catalog/g/gI-11577/,I-11577,10,1,2
+D1,LED_D3.0mm,1,VSYNC,３ｍｍ赤色ＬＥＤ　６２５ｎｍ　７０度　ＯＳＲ５ＪＡ３Ｚ７４Ａ,https://akizukidenshi.com/catalog/g/gI-11577/,I-11577,,,
+"C9,C8,C7,C6,C5,C2,C1",C_Disc_D4.7mm_W2.5mm_P5.00mm,7,0.1uF,積層セラミックコンデンサー　０．１μＦ１００Ｖ　Ｘ７Ｒ　５ｍｍピッチ　（１０個入） ,https://akizukidenshi.com/catalog/g/gP-15927/,P-15927 ,120,10,7
+"C4,C3",C_Disc_D4.7mm_W2.5mm_P5.00mm,2,12pF,積層セラミックコンデンサー　１２ｐＦ１００Ｖ　Ｃ０Ｇ　５ｍｍ,https://akizukidenshi.com/catalog/g/gP-05107/,P-05107,10,1,2
+SW4,2MS1T1B4M7QES,1,POWER,基板用小型トグルスイッチ（３Ｐトグルスイッチ）　１回路２接点,https://akizukidenshi.com/catalog/g/gP-13796/,P-13796 ,140,1,1
+SW1,SW_TH_Tactile_Omron_B3F-10xx,1,RESET,タクトスイッチ（水色） ,https://akizukidenshi.com/catalog/g/gP-03649/,P-03649 ,10,1,1
+SW3,PinHeader_1x03_P2.54mm_Vertical,1,BOOT0,スライドスイッチ　１回路２接点　基板用 ,https://akizukidenshi.com/catalog/g/gP-15707/,P-15707 ,20,1,1
+J1,DB_15F-VGA_L_NOSILK,1,VIDEO OUT,Ｄサブコネクタ★15P/メス★ [HDR13-15F] ,https://www.aitendo.com/product/4420,,50,1,1
+J7,PinHeader_2x05_P2.54mm_Vertical,1,WCH_LINK,分割ロングピンソケット　２×４２　（８４Ｐ） ,https://akizukidenshi.com/catalog/g/gC-05780/,C-05780 ,100,1,1
+,LC145-M4-D,,ケース,LC型ハンドタイププラスチックケース(単3×4本)【LC145-M4-D】,https://www.marutsu.co.jp/pc/i/913842/,,720,1,1
