@@ -31,6 +31,8 @@ https://gorry.haun.org/pw/?RetroVGen
 ----  
   
 note:  
+Arduino IDEのメニュー→ツールから最適化設定を”無し” -O0 に設定してください。
+
 8MHzのクリスタルがPD0/PD1につながっていてHSEで動作することが必要です。  
   
   
