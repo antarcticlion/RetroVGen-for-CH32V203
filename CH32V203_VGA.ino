@@ -4,6 +4,7 @@
 //
 /***********************************************************/
 // CH32V203_VGA.ino
+//  R.02 2024-12-21 copyright (c) antarcticlion 
 //  R.01 2023-11-25 copyright (c) antarcticlion 
 /***********************************************************/
 // ライセンス / LICENSE
@@ -23,12 +24,19 @@
 /***********************************************************/
 //
 //  note:
+//    -O0でビルドして下さい。
+//
 //    8MHzのクリスタルがPD0/PD1につながっていてHSEで動作することが必要です。
 //    システムのコードを HSE 144MHz 設定に、
 //    HSE timeout値を 0x1000 から 0x4000に変更する必要があります。
 //
 //    144MHzで動作するCH32V203ではペリフェラルクロックが9MHzの倍数になるため
 //    各種タイミングは若干の差異があります。
+//
+//      R.02
+//          タイマー割り込みSystick割り込みに変更
+//          表示ルーチンをSystick割り込みハンドラーに移す
+//          リファクタリング
 //
 //      R.01
 //        ファーストリリース
@@ -61,11 +69,11 @@
 #include "screenFont.h"
 
 /***********************************************************/
-// HSYNCタイミングデバッグ設定
+// モード設定用ディップスイッチの並び順設定
 //
-//　desc: デバッグ用。HSYNCとHBPの処理クロック数をシリアル出力する場合はこの定義を有効にする。
+//　desc: モード設定用のディップスイッチの並びを設定する。有効にすると逆順になる。
 //
-// #define SYNC_DEBUG
+// #define REVERSE_DIPSW
 
 /***********************************************************/
 //　フォント切り替え
@@ -99,24 +107,163 @@ volatile static uint8_t text_vram[64][128];  // 128 x 32 文字
 /***********************************************************/
 volatile static uint8_t data[2][256] = { 0 };  //ダブルバッファ
 volatile static uint8_t page = 0;              //ページ
+static uint8_t v_curr = 0;
+
+extern __IO uint64_t msTick;
+volatile static uint64_t HsyncTick = 0;
+volatile static uint64_t HsyncTickModulo = 0;
 
 /***********************************************************/
-// 割り込みハンドラ
+// Systick割り込みハンドラ
 //
-// desc:  HSYNCタイマーの割り込み時に呼ばれ、アップデート割り込みフラグを消す。
-//        将来のインターレース対応に備えてタイマー3のハンドラも用意しておく。
+// desc:  Systick割り込み時に呼ばれ、画面描画処理を行う。
 //
-void TIM4_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));  //割り込みハンドラの属性でプロトタイプ宣言
-void TIM4_IRQHandler(void) {
-  TIM4->INTFR &= ~TIM_UIF;  //アップデート割り込みフラグのクリア
-  //  Serial.println("IRQ");
+void VIDEO1_SysTick_Handler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+void VIDEO1_SysTick_Handler(void){
+  SysTick->SR = 0;
+  if(HsyncTick <= HsyncTickModulo){
+    HsyncTick -= HsyncTickModulo;
+    msTick += 1L;
+  }
+
+  {  //HSYNC生成
+    uint8_t loopcnt = param_H_sync;
+    GPIOB->BCR = GPIO_Pin_0;  //digitalWrite(PB0, LOW);
+    while (--loopcnt) {}
+    GPIOB->BSHR = GPIO_Pin_0;  //digitalWrite(PB0, HIGH);
+  }
+
+  {  //HSYNCバックポーチ
+    uint8_t loopcnt = param_H_back_porch;
+    while (--loopcnt) {}
+  }
+
+  {  //HSYNV後の処理
+    uint16_t curr_char;
+    uint8_t curr_char_line;
+    switch (curr_mode) {
+      case 0:
+        {  //INIT
+          curr_line = 0;
+          curr_mode = 1;
+          curr_mode_remain = param_V_sync_line;
+          curr_view_line = 0;
+          page = 0;
+
+          switch (param_line_doubler) {
+            case 1:  //double
+              curr_char = (curr_view_line / 8) / 2;
+              curr_char_line = ((curr_view_line % 16) >> 1);
+              break;
+            case 2:  //quad
+              curr_char = (curr_view_line / 8) / 4;
+              curr_char_line = ((curr_view_line % 32) >> 2);
+              break;
+            default:  //normal
+              curr_char = (curr_view_line / 8);
+              curr_char_line = (curr_view_line % 8);
+          }
+          for (uint8_t index = 0; index < param_H_chars; index++) {
+#ifdef FONT_RETROVGEN
+            data[page][index] = screen_font[curr_char_line][text_vram[curr_char][index]];
+#else
+            data[page][index] = font[text_vram[curr_char][index]][curr_char_line];
+#endif
+          }
+        }
+        //フォールスルーさせるのでbreak無し
+      case 1:
+        {  //VSYNC
+          digitalWrite(PB1, LOW);
+          if (!(--curr_mode_remain)) {
+            v_curr++;
+            curr_mode = 2;
+            curr_mode_remain = param_V_back_porch;
+          }
+          break;
+        }
+      case 2:
+        {
+          //back portch
+          digitalWrite(PB1, HIGH);
+          if (!(--curr_mode_remain)) {
+            if (v_curr > 60) {
+              v_curr = 0;
+            }
+            text_vram[6][7] = ((v_curr + 1) / 10) + '0';
+            text_vram[6][8] = ((v_curr + 1) % 10) + '0';
+            if (v_curr > 4) {
+              GPIOA->BCR = GPIO_Pin_15;  //digitalWrite(PA15, LOW);
+              text_vram[6][6] = ' ';
+              text_vram[6][12] = ' ';
+            } else {
+              GPIOA->BSHR = GPIO_Pin_15;  //digitalWrite(PA15, HIGH);
+              text_vram[6][6] = 0xFF;
+              text_vram[6][12] = 0xFF;
+            }
+            curr_mode = 3;
+            curr_mode_remain = param_V_total - param_V_sync_line - param_V_back_porch - param_V_front_porch;
+          }
+          break;
+        }
+      case 3:
+        {  // DRAW
+          // DMAを使用してSPIにデータを送信
+          //SPI転送開始
+          DMA1_Channel3->CFGR &= (uint16_t)(~DMA_CFGR1_EN);  // DMAチャンネルを無効化
+          DMA1_Channel3->MADDR = (uint32_t)data[page];       // データバッファのアドレスを設定
+          DMA1_Channel3->CNTR = param_H_chars;               // 転送サイズを設定
+          DMA1->INTFCR = (DMA1_FLAG_TC3 | DMA1_FLAG_HT3);    // 転送完了フラグクリア}
+          DMA1_Channel3->CFGR |= DMA_CFGR1_EN;               // DMAチャンネルを有効化
+          curr_view_line++;
+          page++;
+          page &= 1;
+          switch (param_line_doubler) {
+            case 1:  //double
+              curr_char = (curr_view_line / 8) / 2;
+              curr_char_line = ((curr_view_line % 16) >> 1);
+              break;
+            case 2:  //quad
+              curr_char = (curr_view_line / 8) / 4;
+              curr_char_line = ((curr_view_line % 32) >> 2);
+              break;
+            default:  //normal
+              curr_char = (curr_view_line / 8);
+              curr_char_line = (curr_view_line % 8);
+          }
+          for (uint8_t index = 0; index < param_H_chars; index++) {
+#ifdef FONT_RETROVGEN
+            data[page][index] = screen_font[curr_char_line][text_vram[curr_char][index]];
+#else
+            data[page][index] = font[text_vram[curr_char][index]][curr_char_line];
+#endif
+          }
+
+          if (!(--curr_mode_remain)) {
+            curr_mode = 4;
+            curr_mode_remain = param_V_front_porch;
+          }
+          break;
+        }
+      case 4:
+        {  //front portch
+          if (!(--curr_mode_remain)) {
+            curr_mode = 0;
+            curr_mode_remain = 0;
+          }
+          break;
+        }
+      default:
+        {  //Recover
+          curr_mode = 0;
+          curr_mode_remain = 0;
+          break;
+        }
+    }
+    curr_line++;
+  }
 }
 
-void TIM3_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));  //割り込みハンドラの属性でプロトタイプ宣言
-void TIM3_IRQHandler(void) {
-  TIM3->INTFR &= ~TIM_UIF;  //アップデート割り込みフラグのクリア
-  //  Serial.println("IRQ");
-}
 
 /***********************************************************/
 //
@@ -134,11 +281,19 @@ void setup() {
     pinMode(PB4, INPUT_PULLUP);
     pinMode(PB5, INPUT_PULLUP);
     pinMode(PB6, INPUT_PULLUP);
+
+#ifndef REVERSE_DIPSW
     paramsel |= (digitalRead(PB3) ? 0 : 0x01);
     paramsel |= (digitalRead(PB4) ? 0 : 0x02);
     paramsel |= (digitalRead(PB5) ? 0 : 0x04);
     paramsel |= (digitalRead(PB6) ? 0 : 0x08);
-
+#else
+    //DIP SW を逆順に
+    paramsel |= (digitalRead(PB6) ? 0 : 0x01);
+    paramsel |= (digitalRead(PB5) ? 0 : 0x02);
+    paramsel |= (digitalRead(PB4) ? 0 : 0x04);
+    paramsel |= (digitalRead(PB3) ? 0 : 0x08);
+#endif
     param_H_chars = sScreenParam[paramsel].mHorizontalChars;
     param_V_chars = sScreenParam[paramsel].mVerticalChars;
     param_line_doubler = sScreenParam[paramsel].mLineDoubler;
@@ -151,9 +306,7 @@ void setup() {
     param_V_sync_line = sScreenParam[paramsel].mVerticalSyncLines;
     param_V_back_porch = sScreenParam[paramsel].mVerticalBackPorch;
 
-    Serial.println("PARAM");
-    Serial.println(paramsel);
-    Serial.println("PARAM SEL");
+    HsyncTickModulo = param_timer * (param_H_Prescaler == SPI_BaudRatePrescaler_8 ? 8 : 16); //Systick用プリスケーラ
   }
 
   {  //テキストVRAMのクリア
@@ -209,40 +362,27 @@ void setup() {
       }
     }
 #endif
-    Serial.println("VRAM");
   }
 
   {  //VSYNC LEDの初期化
     pinMode(PA15, OUTPUT);
     digitalWrite(PA15, HIGH);
-    Serial.println("LED");
+  }
+
+  {                        // SYNC PIN
+    pinMode(PB0, OUTPUT);  //HSYNC
+    digitalWrite(PB0, HIGH);
+    pinMode(PB1, OUTPUT);  //VSYNC
+    digitalWrite(PB1, HIGH);
   }
 
   {                                 //System tick設定
-    NVIC_DisableIRQ(SysTicK_IRQn);  //SysTickの割り込みを止める、これを止めないとループ末尾のWFIが効かなくなる。
-    SysTick->SR = 0;
+    NVIC_DisableIRQ(SysTicK_IRQn);  //SysTickの割り込みを止める
     SysTick->CTLR = 0;
+    SysTick->SR = 0;
     SysTick->CNT = 0;
-    SysTick->CMP = SystemCoreClock - 1;
-    SysTick->CTLR = 0x0D;
-    Serial.println("SYSTICK");
-  }
-
-
-  {                                                              //タイマーの初期化
-    SetVTFIRQ((uint32_t)TIM4_IRQHandler, TIM4_IRQn, 0, ENABLE);  //タイマー割込ベクター設定
-    TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);         // TIM4クロックを有効化
-    TIM_TimeBaseInitStructure.TIM_Period = param_timer;          //計算値4576、実測から少し引く
-    TIM_TimeBaseInitStructure.TIM_Prescaler = 0;                 //プリスケーラは無効化設定
-    TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;  //供給クロック 144MHz 1clk=6.944444444444444ns
-    TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Down;
-    TIM_TimeBaseInit(TIM4, &TIM_TimeBaseInitStructure);
-    TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
-    TIM_ARRPreloadConfig(TIM4, ENABLE);
-    TIM_Cmd(TIM4, ENABLE);      //TIM4 ON
-    NVIC_EnableIRQ(TIM4_IRQn);  //TIM4の割り込みON
-    Serial.println("TIM");
+    SysTick->CMP = param_timer;
+    SetVTFIRQ((uint32_t)VIDEO1_SysTick_Handler, SysTicK_IRQn, 0, ENABLE);  //SysTick割込ベクター設定
   }
 
   {  // DMAの初期化 SPI1はDMA1のCH3固定
@@ -261,7 +401,6 @@ void setup() {
     DMA_InitStructure.DMA_Priority = DMA_Priority_VeryHigh;
     DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
     DMA_Init(DMA1_Channel3, &DMA_InitStructure);
-    Serial.println("DMA");
   }
 
   {  // SPIの初期化
@@ -275,11 +414,6 @@ void setup() {
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-    //MISO
-    //    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
-    //    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-    //    GPIO_Init(GPIOA, &GPIO_InitStructure);
-
     //MOSI
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
@@ -288,7 +422,7 @@ void setup() {
 
     SPI_InitStructure.SPI_Direction = SPI_Direction_1Line_Tx;
     SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
-    SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;  //ここはクロック18MHz or 9MHz に都度設定する
+    SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
     SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
     SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
     SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
@@ -299,198 +433,20 @@ void setup() {
     SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Tx, ENABLE);
 
     SPI_Cmd(SPI1, ENABLE);  //SPI有効化
-    Serial.println("SPI");
   }
 
-  {                        // SYNC PIN
-    pinMode(PB0, OUTPUT);  //HSYNC
-    digitalWrite(PB0, HIGH);
-    pinMode(PB1, OUTPUT);  //VSYNC
-    digitalWrite(PB1, HIGH);
-    Serial.println("SIGNAL PIN");
+  {//画面表示開始
+    SysTick->CTLR = 0x0F;
+    NVIC_EnableIRQ(SysTicK_IRQn);
   }
-
-  Serial.println("---");
-  Serial.println("Init done");
 }
 
-static uint8_t v_curr = 0;
-
-static uint64_t prev_systick = 0;
-static uint64_t curr_systick = 0;
-static uint64_t systick_p1 = 0;
-static uint64_t systick_p2 = 0;
-static uint64_t systick_p3 = 0;
-static uint64_t systick_p4 = 0;
 
 /***********************************************************/
 //
 /***********************************************************/
 void loop() {
   while (1) {
-    //ループ関数を抜けない
-    //  curr_systick = SysTick->CNT;
-    {  //HSYNC生成
-      //  asm volatile ("nop");
-      uint8_t loopcnt = param_H_sync;
-#ifdef SYNC_DEBUG
-      systick_p1 = SysTick->CNT;
-#endif
-      GPIOB->BCR = GPIO_Pin_0;  //digitalWrite(PB0, LOW);
-      while (--loopcnt) {}
-#ifdef SYNC_DEBUG
-      systick_p2 = SysTick->CNT;
-#endif
-      GPIOB->BSHR = GPIO_Pin_0;  //digitalWrite(PB0, HIGH);
-    }
 
-    {  //HSYNCバックポーチ
-      uint8_t loopcnt = param_H_back_porch;
-      while (--loopcnt) {}
-#ifdef SYNC_DEBUG
-      systick_p3 = SysTick->CNT;
-#endif
-    }
-
-    {  //HSYNV後の処理
-      uint16_t curr_char;
-      uint8_t curr_char_line;
-      switch (curr_mode) {
-        case 0:
-          {  //INIT
-            curr_line = 0;
-            curr_mode = 1;
-            curr_mode_remain = param_V_sync_line;
-            curr_view_line = 0;
-            page = 0;
-
-            switch (param_line_doubler) {
-              case 1:  //double
-                curr_char = (curr_view_line / 8) / 2;
-                curr_char_line = ((curr_view_line % 16) >> 1);
-                break;
-              case 2:  //quad
-                curr_char = (curr_view_line / 8) / 4;
-                curr_char_line = ((curr_view_line % 32) >> 2);
-                break;
-              default:  //normal
-                curr_char = (curr_view_line / 8);
-                curr_char_line = (curr_view_line % 8);
-            }
-            for (uint8_t index = 0; index < param_H_chars; index++) {
-#ifdef FONT_RETROVGEN
-              data[page][index] = screen_font[curr_char_line][text_vram[curr_char][index]];
-#else
-              data[page][index] = font[text_vram[curr_char][index]][curr_char_line];
-#endif
-            }
-          }
-          //フォールスルーさせるのでbreak無し
-        case 1:
-          {  //VSYNC
-            digitalWrite(PB1, LOW);
-            if (!(--curr_mode_remain)) {
-              v_curr++;
-              curr_mode = 2;
-              curr_mode_remain = param_V_back_porch;
-            }
-            break;
-          }
-        case 2:
-          {
-            //back portch
-            digitalWrite(PB1, HIGH);
-            if (!(--curr_mode_remain)) {
-              if (v_curr > 60) {
-                v_curr = 0;
-              }
-              text_vram[6][7] = ((v_curr + 1) / 10) + '0';
-              text_vram[6][8] = ((v_curr + 1) % 10) + '0';
-              if (v_curr > 4) {
-                GPIOA->BCR = GPIO_Pin_15;  //digitalWrite(PA15, LOW);
-                text_vram[6][6] = ' ';
-                text_vram[6][12] = ' ';
-              } else {
-                GPIOA->BSHR = GPIO_Pin_15;  //digitalWrite(PA15, HIGH);
-                text_vram[6][6] = 0xFF;
-                text_vram[6][12] = 0xFF;
-              }
-              curr_mode = 3;
-              curr_mode_remain = param_V_total - param_V_sync_line - param_V_back_porch - param_V_front_porch;
-            }
-            break;
-          }
-        case 3:
-          {  // DRAW
-            // DMAを使用してSPIにデータを送信
-            //SPI転送開始
-            DMA1_Channel3->CFGR &= (uint16_t)(~DMA_CFGR1_EN);  // DMAチャンネルを無効化
-            DMA1_Channel3->MADDR = (uint32_t)data[page];       // データバッファのアドレスを設定
-            DMA1_Channel3->CNTR = param_H_chars;               // 転送サイズを設定
-            DMA1->INTFCR = (DMA1_FLAG_TC3 | DMA1_FLAG_HT3);    // 転送完了フラグクリア}
-#ifdef SYNC_DEBUG
-            systick_p3 = SysTick->CNT;
-#endif
-            DMA1_Channel3->CFGR |= DMA_CFGR1_EN;  // DMAチャンネルを有効化
-            curr_view_line++;
-            page++;
-            page &= 1;
-            switch (param_line_doubler) {
-              case 1:  //double
-                curr_char = (curr_view_line / 8) / 2;
-                curr_char_line = ((curr_view_line % 16) >> 1);
-                break;
-              case 2:  //quad
-                curr_char = (curr_view_line / 8) / 4;
-                curr_char_line = ((curr_view_line % 32) >> 2);
-                break;
-              default:  //normal
-                curr_char = (curr_view_line / 8);
-                curr_char_line = (curr_view_line % 8);
-            }
-            for (uint8_t index = 0; index < param_H_chars; index++) {
-#ifdef FONT_RETROVGEN
-              data[page][index] = screen_font[curr_char_line][text_vram[curr_char][index]];
-#else
-              data[page][index] = font[text_vram[curr_char][index]][curr_char_line];
-#endif
-            }
-            while (!(DMA1->INTFR & DMA1_FLAG_TC3)) {}  // 転送は投げっぱなしにしない。
-
-            if (!(--curr_mode_remain)) {
-              curr_mode = 4;
-              curr_mode_remain = param_V_front_porch;
-            }
-            break;
-          }
-        case 4:
-          {  //front portch
-
-            if (!(--curr_mode_remain)) {
-              curr_mode = 0;
-              curr_mode_remain = 0;
-            }
-            break;
-          }
-        default:
-          {  //Recover
-            curr_mode = 0;
-            curr_mode_remain = 0;
-            break;
-          }
-      }
-      curr_line++;
-#ifdef SYNC_DEBUG
-      Serial.println("p2 - p1");
-      Serial.println(systick_p2 - systick_p1);
-      Serial.println("p3 - p2");
-      Serial.println(systick_p3 - systick_p2);
-#endif
-      //  Serial.println(curr_systick - prev_systick);
-      //  prev_systick = curr_systick;
-      //  Serial.println("Loop");
-      __WFI();  //スリープモードに入る
-      //  Serial.println("wake");
-    }
   }
 }
